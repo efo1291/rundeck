@@ -18,12 +18,14 @@ package rundeck
 
 import com.dtolabs.rundeck.app.support.QueueQuery
 import com.dtolabs.rundeck.core.authorization.AuthContext
+import com.dtolabs.rundeck.core.authorization.AuthContextProvider
 import com.dtolabs.rundeck.core.authorization.SubjectAuthContext
 import com.dtolabs.rundeck.core.authorization.UserAndRolesAuthContext
 import com.dtolabs.rundeck.core.dispatcher.ExecutionState
 import com.dtolabs.rundeck.core.execution.workflow.NodeRecorder
 import com.dtolabs.rundeck.core.execution.workflow.steps.node.NodeStepResult
 import groovy.time.TimeCategory
+import org.rundeck.app.authorization.AppAuthContextEvaluator
 import org.rundeck.core.auth.AuthConstants
 import com.dtolabs.rundeck.core.common.Framework
 import com.dtolabs.rundeck.core.common.NodeEntryImpl
@@ -350,6 +352,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         job.save()
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
+        }
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
             authorizeProjectJobAll(*_) >> true
         }
         service.scheduledExecutionService = Mock(ScheduledExecutionService){
@@ -400,8 +404,12 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def Map params  = [runAtTime: "2080-01-01T12:10:01.000+0000"]
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
-            authorizeProjectJobAll(*_) >> true
+
         }
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+            }
         service.scheduledExecutionService = Mock(ScheduledExecutionService)
 
         Calendar expectCal = Calendar.getInstance()
@@ -545,9 +553,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         se.addToOptions(opt2)
         null != se.save()
 
+        service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+            1 * filterAuthorizedNodes(*_)
+        }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
@@ -602,9 +612,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         null != se
         null != se.save()
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> ['a': 'b', c: 'd']
             0 * _(*_)
         }
@@ -665,9 +677,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         null != exec.save()
 
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
@@ -743,9 +757,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         se.addToOptions(opt2)
         null != se.save()
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
@@ -820,9 +836,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         se.addToOptions(opt2)
         null != se.save()
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
@@ -890,9 +908,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         se.addToOptions(opt3)
         null != se.save()
 
+        service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+            1 * filterAuthorizedNodes(*_)
+        }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
@@ -953,12 +973,15 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
                                           .dataContext(DataContextUtils.context('data', [nodea: 'z']))
                                           .mergeSharedContext(sharedContext)
                                           .build()
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(_, _, _, _) >> { args ->
+                    args[2]
+                }
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(_, _) >> { args ->
                 com.dtolabs.rundeck.core.common.NodeFilter.filterNodes(args[0], allNodes)
-            }
-            1 * filterAuthorizedNodes(_, _, _, _) >> { args ->
-                args[2]
             }
             0 * _(*_)
         }
@@ -1000,9 +1023,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
     def "Create execution context with global vars"() {
         given:
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [a: 'b', c: 'd']
             0 * _(*_)
         }
@@ -1036,9 +1061,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
     def "Create execution context with email of user profile"() {
         given:
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [:]
             0 * _(*_)
         }
@@ -1076,9 +1103,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
     def "Create execution context with charset"() {
         given:
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [:]
             0 * _(*_)
         }
@@ -1114,6 +1143,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         def auth = Mock(AuthContext)
         def execution = new Execution()
 
@@ -1121,8 +1151,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def result = service.deleteExecution(execution, auth, 'bob')
 
         then:
-        1 * service.frameworkService.authResourceForProject(_)
-        1 * service.frameworkService.authorizeApplicationResourceAny(
+        1 * service.rundeckAuthContextEvaluator.authResourceForProject(_)
+        1 * service.rundeckAuthContextEvaluator.authorizeApplicationResourceAny(
                 auth,
                 _,
                 [AuthConstants.ACTION_DELETE_EXECUTION, AuthConstants.ACTION_ADMIN]
@@ -1136,6 +1166,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         def auth = Mock(AuthContext)
         def execution = new Execution()
         execution.dateStarted = new Date()
@@ -1144,8 +1175,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def result = service.deleteExecution(execution, auth, 'bob')
 
         then:
-        1 * service.frameworkService.authResourceForProject(_)
-        1 * service.frameworkService.authorizeApplicationResourceAny(
+        1 * service.rundeckAuthContextEvaluator.authResourceForProject(_)
+        1 * service.rundeckAuthContextEvaluator.authorizeApplicationResourceAny(
                 auth,
                 _,
                 [AuthConstants.ACTION_DELETE_EXECUTION, AuthConstants.ACTION_ADMIN]
@@ -1159,6 +1190,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         def auth = Mock(AuthContext)
         def execution = new Execution(
                 user: 'userB',
@@ -1203,8 +1235,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def result = service.deleteExecution(execution, auth, 'bob')
 
         then:
-        1 * service.frameworkService.authResourceForProject(_)
-        1 * service.frameworkService.authorizeApplicationResourceAny(
+        1 * service.rundeckAuthContextEvaluator.authResourceForProject(_)
+        1 * service.rundeckAuthContextEvaluator.authorizeApplicationResourceAny(
                 auth,
                 _,
                 [AuthConstants.ACTION_DELETE_EXECUTION, AuthConstants.ACTION_ADMIN]
@@ -1220,6 +1252,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         def auth = Mock(AuthContext)
         def execution = new Execution(
                 user: 'userB',
@@ -1265,8 +1298,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def result = service.deleteExecution(execution, auth, 'bob')
 
         then:
-        1 * service.frameworkService.authResourceForProject(_)
-        1 * service.frameworkService.authorizeApplicationResourceAny(
+        1 * service.rundeckAuthContextEvaluator.authResourceForProject(_)
+        1 * service.rundeckAuthContextEvaluator.authorizeApplicationResourceAny(
                 auth,
                 _,
                 [AuthConstants.ACTION_DELETE_EXECUTION, AuthConstants.ACTION_ADMIN]
@@ -1279,6 +1312,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         service.fileUploadService = Mock(FileUploadService)
         def auth = Mock(AuthContext)
         def execution = new Execution(
@@ -1304,8 +1338,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         def result = service.deleteExecution(execution, auth, 'bob')
 
         then:
-        1 * service.frameworkService.authResourceForProject(_)
-        1 * service.frameworkService.authorizeApplicationResourceAny(
+        1 * service.rundeckAuthContextEvaluator.authResourceForProject(_)
+        1 * service.rundeckAuthContextEvaluator.authorizeApplicationResourceAny(
                 auth,
                 _,
                 [AuthConstants.ACTION_DELETE_EXECUTION, AuthConstants.ACTION_ADMIN]
@@ -2252,6 +2286,8 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
+        }
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
             authorizeProjectJobAll(*_) >> true
         }
 
@@ -2301,8 +2337,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
-            authorizeProjectJobAll(*_) >> true
         }
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+            }
         service.scheduledExecutionService = Mock(ScheduledExecutionService)
         service.configurationService = Stub(ConfigurationService) {
             isExecutionModeActive() >> executionsAreActive
@@ -2338,8 +2377,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
-            authorizeProjectJobAll(*_) >> true
         }
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+            }
         service.scheduledExecutionService = Mock(ScheduledExecutionService)
         service.configurationService = Stub(ConfigurationService) {
             isExecutionModeActive() >> executionsAreActive
@@ -2376,8 +2418,10 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
-            authorizeProjectJobAll(*_) >> true
         }
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+            }
         Date scheduleDate = createDate(2200, Calendar.JANUARY, 1, 12, 43, 10, 'Z')
 
         service.configurationService = Stub(ConfigurationService) {
@@ -2471,8 +2515,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
     @Unroll
     def "should not scheduleAdHocJob with invalid ISO 8601 date"() {
         given:
+
         service.frameworkService = Stub(FrameworkService) {
             getServerUUID() >> null
+        }
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator){
             authorizeProjectJobAll(*_) >> true
         }
         service.configurationService = Stub(ConfigurationService) {
@@ -2517,6 +2564,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.scheduledExecutionService = Mock(ScheduledExecutionService)
         service.metricService = Mock(MetricService)
         service.frameworkService = Mock(FrameworkService)
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         service.reportService = Mock(ReportService)
         service.notificationService = Mock(NotificationService)
         service.workflowService = Mock(WorkflowService)
@@ -2573,9 +2621,9 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         e.abortedby==(cmatch?(asuser?:'userB'):null)
 
         1 * service.scheduledExecutionService.getJobIdent(job, e) >> [jobname: 'test', groupname: 'testgroup']
-        1 * service.frameworkService.authorizeProjectExecutionAll(auth, e, [AuthConstants.ACTION_KILL]) >> true
+        1 * service.rundeckAuthContextEvaluator.authorizeProjectExecutionAll(auth, e, [AuthConstants.ACTION_KILL]) >> true
         if(asuser) {
-            1 * service.frameworkService.authorizeProjectExecutionAll(auth, e, [AuthConstants.ACTION_KILLAS]) >> true
+            1 * service.rundeckAuthContextEvaluator.authorizeProjectExecutionAll(auth, e, [AuthConstants.ACTION_KILLAS]) >> true
         }
         1 * service.frameworkService.isClusterModeEnabled() >> iscluster
         if(cmatch) {
@@ -2619,9 +2667,11 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
     def "get NodeService from Context"() {
         given:
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [:]
             0 * _(*_)
         }
@@ -2743,6 +2793,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
                 ).save(),
                 ).save(flush: true)
         service.frameworkService = Mock(FrameworkService)
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         service.reportService = Mock(ReportService) {
             1 * reportExecutionResult(_) >> [:]
         }
@@ -2771,10 +2822,13 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         def orgProject = 'prgProj'
         def jobProj = 'testproj'
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, orgProject)
             0 * filterNodeSet(null, jobProj)
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [:]
             0 * _(*_)
         }
@@ -2851,12 +2905,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.executionUtilService = Mock(ExecutionUtilService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
-        service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+            _ * filterAuthorizedNodes(_, _, _, _) >> { args ->
                 nodeSet
             }
+            authorizeProjectJobAll(*_) >> true
         }
+        service.frameworkService = Mock(FrameworkService) {
+
+        }
+        service.rundeckAuthContextProvider=Mock(AuthContextProvider)
 
         service.notificationService = Mock(NotificationService)
         def framework = Mock(Framework)
@@ -2959,13 +3017,14 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.executionUtilService = Mock(ExecutionUtilService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
-        service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
-        }
 
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+                1 * authorizeProjectJobAll(*_) >> true
+            }
+        service.frameworkService = Mock(FrameworkService)
+
+
+        service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.notificationService = Mock(NotificationService)
         def executionListener = Mock(ExecutionListener)
         def framework = Mock(Framework)
@@ -3076,12 +3135,18 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.executionUtilService = Mock(ExecutionUtilService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
-        service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+                _ * filterAuthorizedNodes(_, _, _, _) >> { args ->
+                    nodeSet
+                }
+                authorizeProjectJobAll(*_) >> true
             }
+        service.frameworkService = Mock(FrameworkService) {
+
         }
+
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
 
 
@@ -3191,11 +3256,15 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.executionUtilService = Mock(ExecutionUtilService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
-        service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+                _ * filterAuthorizedNodes(_, _, _, _) >> { args ->
+                    nodeSet
+                }
+                authorizeProjectJobAll(*_) >> true
             }
+        service.frameworkService = Mock(FrameworkService) {
+
         }
 
 
@@ -3439,12 +3508,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.executionUtilService = Mock(ExecutionUtilService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
-        service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
+
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+                _ * filterAuthorizedNodes(_, _, _, _) >> { args ->
+                    nodeSet
+                }
+                authorizeProjectJobAll(*_) >> true
             }
+        service.frameworkService = Mock(FrameworkService) {
         }
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
 
 
         def executionListener = Mock(ExecutionListener)
@@ -3551,14 +3624,17 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
             getFrameworkProperties() >> (['rundeck.disable.ref.stats': propValue] as Properties)
         }
 
+            service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator) {
+                _ * filterAuthorizedNodes(_, _, _, _) >> { args ->
+                    nodeSet
+                }
+                authorizeProjectJobAll(*_) >> true
+            }
 
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         def executionListener = Mock(ExecutionListener)
 
         def origContext = Mock(StepExecutionContext){
@@ -3662,11 +3738,13 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.fileUploadService = Mock(FileUploadService)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
@@ -3868,10 +3946,12 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
 
         service.fileUploadService = Mock(FileUploadService) {
             1 * validateFileRefForJobOption(_, _, _, _) >> [
@@ -3938,10 +4018,12 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
 
         service.fileUploadService = Mock(FileUploadService)
         service.storageService = Mock(StorageService)
@@ -3996,10 +4078,12 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
 
         service.fileUploadService = Mock(FileUploadService)
         service.storageService = Mock(StorageService)
@@ -4066,12 +4150,17 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                new NodeSetImpl()
-            }
+
         }
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    new NodeSetImpl()
+                }
+            }
+
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
 
         def executionListener = Mock(ExecutionListener)
 
@@ -4177,13 +4266,17 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                new NodeSetImpl()
-            }
+
         }
 
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    new NodeSetImpl()
+                }
+            }
 
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         def executionListener = Mock(ExecutionListener)
 
         def origContext = Mock(StepExecutionContext){
@@ -4283,10 +4376,15 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         null != se.save()
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)>>{
+                    new NodeSetImpl()
+                }
+            }
 
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
@@ -4365,10 +4463,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'AProject')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_)
             0 * _(*_)
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                1 * filterAuthorizedNodes(*_)>>{
+                    new NodeSetImpl()
+                }
+            }
 
         service.fileUploadService = Mock(FileUploadService)
         service.storageService = Mock(StorageService)
@@ -4439,11 +4543,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
+
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
+        service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
 
 
@@ -4559,6 +4668,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         given:
 
         service.frameworkService = Mock(FrameworkService)
+        service.rundeckAuthContextEvaluator=Mock(AppAuthContextEvaluator)
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
 
@@ -4704,11 +4814,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
+
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
 
 
@@ -4817,11 +4932,15 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
+
         }
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
 
         service.notificationService = Mock(NotificationService)
@@ -4885,10 +5004,12 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [a: 'b', c: 'd']
             0 * _(*_)
         }
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.storageService = Mock(StorageService) {
             1 * storageTreeWithContext(_)
         }
@@ -4922,10 +5043,13 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
 
         service.frameworkService = Mock(FrameworkService) {
             1 * filterNodeSet(null, 'testproj')
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [a: 'b', c: 'd']
             0 * _(*_)
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.storageService = Mock(StorageService) {
             1 * storageTreeWithContext(_)
         }
@@ -5193,11 +5317,16 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
+
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
+            service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
 
 
@@ -5337,11 +5466,15 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(*_) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
-            }
+
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(*_) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
 
         service.executionLifecyclePluginService = Mock(ExecutionLifecyclePluginService)
         service.workflowService = Mock(WorkflowService)
@@ -5466,12 +5599,17 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.storageService = Mock(StorageService)
         service.jobStateService = Mock(JobStateService)
         service.frameworkService = Mock(FrameworkService) {
-            authorizeProjectJobAll(refAuth, _, [AuthConstants.ACTION_RUN], project) >> true
-            filterAuthorizedNodes(_, _, _, _) >> { args ->
-                nodeSet
             }
-            getAuthContextForUserAndRolesAndProject(_,_,project)>>refAuth
+        service.rundeckAuthContextProvider = Mock(AuthContextProvider) {
+            1 * getAuthContextForUserAndRolesAndProject(_,_,project)>>refAuth
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                authorizeProjectJobAll(refAuth, _, [AuthConstants.ACTION_RUN], project) >> true
+                _ * filterAuthorizedNodes(*_)>>{
+                    nodeSet
+                }
+            }
 
 
         def executionListener = Mock(ExecutionListener)
@@ -5573,6 +5711,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         }
         job.save()
         service.notificationService = Mock(NotificationService)
+        service.rundeckAuthContextProvider=Mock(AuthContextProvider)
         when:
         service.createMissedExecution(job,"201365e7-2222-433d-a4d9-0d7712df0f84",scheduledTime)
         Execution execution = Execution.findByScheduledExecution(job)
@@ -5593,7 +5732,7 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         0 | null
         1 | new Notification(eventTrigger: "onfailure",type: "url",format:"json",content: "http://mywebhook.com")
     }
-  
+
       def "use referenced job project if enabled"() {
         given:
 
@@ -5602,10 +5741,13 @@ class ExecutionServiceSpec extends Specification implements ServiceUnitTest<Exec
         service.frameworkService = Mock(FrameworkService) {
             0 * filterNodeSet(null, orgProject)
             1 * filterNodeSet(null, jobProj)
-            1 * filterAuthorizedNodes(*_)
             1 * getProjectGlobals(*_) >> [:]
             0 * _(*_)
         }
+
+            service.rundeckAuthContextEvaluator = Mock(AppAuthContextEvaluator){
+                1 * filterAuthorizedNodes(*_)
+            }
         service.storageService = Mock(StorageService) {
             1 * storageTreeWithContext(_)
         }
