@@ -31,8 +31,12 @@ class AuthToken implements AuthenticationToken {
     Date dateCreated
     Date lastUpdated
     AuthTokenType type = AuthTokenType.USER
+    String name
+    Mode mode = Mode.SECURED
+    String clearToken = null
+
     static belongsTo = [user:User]
-    static transients = ['printableToken','ownerName']
+    static transients = ['printableToken','ownerName', 'clearToken']
     static constraints = {
         token(nullable:false,unique:true)
         authRoles(nullable:false)
@@ -43,6 +47,8 @@ class AuthToken implements AuthenticationToken {
         lastUpdated(nullable: true)
         dateCreated(nullable: true)
         type(nullable: true)
+        name(nullable: true)
+        mode(nullable: true)
     }
     static mapping = {
         authRoles type: 'text'
@@ -54,6 +60,85 @@ class AuthToken implements AuthenticationToken {
         }
     }
 
+    def beforeInsert() {
+        encodeToken()
+    }
+
+    def beforeUpdate() {
+        encodeToken()
+    }
+
+    def beforeValidate() {
+        encodeToken()
+    }
+
+    /**
+     * Encodes the token value according to the mode set.
+     */
+    private void encodeToken() {
+        if(clearToken) {
+            return;
+        }
+
+        this.clearToken = token
+        this.mode = this.mode ?: Mode.LEGACY
+        this.token = encodeTokenValue(this.clearToken, this.mode)
+    }
+
+    /**
+     * Encodes a clear token value acording to the mode supplied.
+     */
+    public static String encodeTokenValue(String clearValue, Mode mode){
+        if(!clearValue)
+            throw new IllegalArgumentException("Illegal token value supplied: " + clearValue)
+
+        switch (mode) {
+            case Mode.SECURED:
+                return clearValue.encodeAsSHA256()
+
+            case Mode.LEGACY:
+                return clearValue
+
+            default:
+                return clearValue
+        }
+    }
+
+    /**
+     * Finds a token from the provided value.
+     */
+    public static AuthToken tokenLookup(String tokenValue) {
+        def tokenHash = encodeTokenValue(tokenValue, Mode.SECURED)
+        return AuthToken.createCriteria().get {
+            or {
+                and {
+                    eq("mode", Mode.SECURED)
+                    eq("token", tokenHash)
+                }
+                and {
+                    or {
+                        isNull("mode")
+                        eq("mode", Mode.LEGACY)
+                    }
+                    eq("token", tokenValue)
+                }
+            }
+            or {
+                isNull("type")
+                eq("type", AuthTokenType.USER)
+            }
+        }
+    }
+
+    /**
+     * Sets a new token value.
+     */
+    void setToken(String token) {
+        this.clearToken = null
+        this.token = token
+    }
+
+    @Override
     Set<String> authRolesSet() {
         return parseAuthRoles(authRoles)
     }
@@ -90,7 +175,13 @@ class AuthToken implements AuthenticationToken {
         "Auth Token: ${printableToken}"
     }
 
+    @Override
     String getOwnerName() {
         return user.login
+    }
+
+    public static enum Mode {
+        LEGACY,
+        SECURED
     }
 }

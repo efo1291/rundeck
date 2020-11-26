@@ -30,6 +30,12 @@ import rundeck.AuthToken
  */
 @ApiResource
 class Token {
+
+    @ApiVersion(37)
+    @Ignore(onlyIfNull = true)
+    @XmlAttribute
+    String name;
+
     @ApiVersion(19)
     @XmlAttribute
     String id;
@@ -62,10 +68,13 @@ class Token {
     @ApiVersion(19)
     Boolean expired;
 
-    Token(AuthToken authToken, boolean masked = false) {
-        this.id = authToken.uuid ?: authToken.token
-        this.token = masked ? null : authToken.token
-        this.v18TokenId = authToken.token
+    Token(AuthToken authToken, boolean masked = true) {
+        this.name = authToken.name
+        this.id = authToken.uuid ?: authToken.id
+        this.token = masked ? null :
+                (authToken.mode == null || authToken.mode == AuthToken.Mode.LEGACY) ? authToken.token :
+                        authToken.clearToken
+        this.v18TokenId = this.token
         this.creator = authToken.creator
         this.user = authToken.user.login
         this.roles = authToken.authRolesSet()

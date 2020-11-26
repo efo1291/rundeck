@@ -57,4 +57,9 @@ class AuthTokenSpec extends Specification {
         ['', 'b']            | 'b'
         ['   ', 'b', '    '] | 'b'
     }
+
+    // TODO Token encoding test
+    // TODO secure storage test
+    // TODO token lookup test
+    // TODO retrocompat tests
 }

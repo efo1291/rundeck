@@ -60,6 +60,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
         AuthToken webhookToken = new AuthToken(
                 user: bob,
                 type: AuthTokenType.WEBHOOK,
+                mode: AuthToken.Mode.LEGACY,
                 token: 'whk',
                 authRoles: 'a,b',
                 uuid: '123uuidwhk',
@@ -79,6 +80,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
 
         then:
         1 * controller.apiService.requireApi(_, _) >> true
+        1 * controller.apiService.requireVersion(_, _, _) >> true
         response.json.size() == 1
         response.json[0].id == "123uuid"
 
@@ -100,6 +102,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
                 uuid: '123uuid',
                 creator: 'elf',
                 )
+        createdToken.save()
         def roles = AuthToken.parseAuthRoles('api_token_group')
         XML.use('v' + request.api_version)
         JSON.use('v' + request.api_version)
@@ -108,7 +111,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
 
         then:
         1 * controller.apiService.requireApi(_, _) >> true
-        1 * controller.apiService.generateUserToken(null, null, 'bob', roles) >> createdToken
+        1 * controller.apiService.generateUserToken(null, null, 'bob', roles, _, _, _) >> createdToken
         0 * controller.apiService._(*_)
 
         response.status == 201
@@ -142,6 +145,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
                 creator: 'elf',
                 expiration: new Date(123)
                 )
+        createdToken.save()
         def roles = AuthToken.parseAuthRoles('a,b')
         XML.use('v' + request.api_version)
         JSON.use('v' + request.api_version)
@@ -158,7 +162,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
             it[2].json(requestJson)
             true
         }
-        1 * controller.apiService.generateUserToken(_, null, 'bob', roles) >> createdToken
+        1 * controller.apiService.generateUserToken(_, null, 'bob', roles, _, _, _) >> createdToken
         0 * controller.apiService._(*_)
 
         response.status == 201
@@ -197,6 +201,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
                 creator: 'elf',
                 expiration: new Date(123)
                 )
+        createdToken.save()
         def roles = AuthToken.parseAuthRoles('a,b')
         XML.use('v' + request.api_version)
         JSON.use('v' + request.api_version)
@@ -213,7 +218,7 @@ class ApiControllerSpec extends Specification implements ControllerUnitTest<ApiC
             it[2].json(requestJson)
             true
         }
-        1 * controller.apiService.generateUserToken(_, null, 'bob', null) >> createdToken
+        1 * controller.apiService.generateUserToken(_, null, 'bob', null, _, _, _) >> createdToken
         0 * controller.apiService._(*_)
 
         response.status == 201
